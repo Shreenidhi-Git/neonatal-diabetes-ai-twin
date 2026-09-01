@@ -7,7 +7,7 @@ import tensorflow as tf
 
 
 # ============================================================
-# PAGE CONFIGURATION
+# PAGE SETTINGS
 # ============================================================
 
 st.set_page_config(
@@ -30,7 +30,7 @@ DECISION_THRESHOLD = 0.70
 
 
 # ============================================================
-# 33 FEATURES USED BY THE TRAINED MODEL
+# 33 FEATURES
 # ============================================================
 
 EXPECTED_FEATURES = [
@@ -75,7 +75,7 @@ EXPECTED_FEATURES = [
 
 
 # ============================================================
-# CHECK REQUIRED FILES
+# CHECK FILES
 # ============================================================
 
 required_files = [
@@ -93,7 +93,7 @@ if missing_files:
 
     st.error("❌ Required AI Twin files are missing.")
 
-    st.write("Please make sure these files are uploaded to GitHub:")
+    st.write("Please make sure these files are in your repository:")
 
     for file in missing_files:
         st.write(f"- `{file}`")
@@ -102,7 +102,7 @@ if missing_files:
 
 
 # ============================================================
-# LOAD MODEL, SCALER AND FEATURES
+# LOAD MODEL AND SUPPORT FILES
 # ============================================================
 
 @st.cache_resource
@@ -118,7 +118,6 @@ def load_ai_twin():
     )
 
     with open(FEATURE_FILE, "rb") as file:
-
         feature_names = joblib.load(file)
 
     reference_values = None
@@ -126,7 +125,6 @@ def load_ai_twin():
     if os.path.exists(REFERENCE_FILE):
 
         with open(REFERENCE_FILE, "rb") as file:
-
             reference_values = joblib.load(file)
 
     return (
@@ -138,7 +136,7 @@ def load_ai_twin():
 
 
 # ============================================================
-# LOAD FILES
+# LOAD
 # ============================================================
 
 try:
@@ -149,7 +147,7 @@ try:
 
 except Exception as error:
 
-    st.error("❌ Unable to load the AI Twin model.")
+    st.error("❌ Could not load the AI Twin.")
 
     st.exception(error)
 
@@ -157,36 +155,32 @@ except Exception as error:
 
 
 # ============================================================
-# VALIDATE FEATURE COUNT
+# VALIDATE FEATURES
 # ============================================================
 
 if len(feature_names) != 33:
 
     st.error(
         f"""
-        ❌ Feature count mismatch.
+        ❌ Feature count error.
 
-        Expected: 33
+        The model requires 33 features.
 
-        Loaded: {len(feature_names)}
+        Loaded features: {len(feature_names)}
         """
     )
 
     st.stop()
 
 
-# ============================================================
-# VALIDATE FEATURE ORDER
-# ============================================================
-
 if feature_names != EXPECTED_FEATURES:
 
     st.error(
         """
-        ❌ Feature order does not match the trained model.
+        ❌ Feature order mismatch.
 
-        Please use the same feature order that was used
-        during model training.
+        The feature order saved with the model does not
+        match the expected 33-feature order.
         """
     )
 
@@ -201,9 +195,9 @@ if getattr(scaler, "n_features_in_", None) != 33:
 
     st.error(
         """
-        ❌ Scaler feature count mismatch.
+        ❌ Scaler error.
 
-        The AI Twin requires a 33-feature scaler.
+        The saved scaler does not contain 33 features.
         """
     )
 
@@ -211,7 +205,7 @@ if getattr(scaler, "n_features_in_", None) != 33:
 
 
 # ============================================================
-# REFERENCE VALUE FUNCTION
+# GET REFERENCE VALUE
 # ============================================================
 
 def get_reference_value(feature):
@@ -237,17 +231,15 @@ def get_reference_value(feature):
 
         pass
 
-    # Fallback to scaler mean
-
-    feature_index = feature_names.index(feature)
+    index = feature_names.index(feature)
 
     return float(
-        scaler.mean_[feature_index]
+        scaler.mean_[index]
     )
 
 
 # ============================================================
-# YES / NO SELECTOR
+# YES / NO INPUT
 # ============================================================
 
 def yes_no(label):
@@ -255,13 +247,13 @@ def yes_no(label):
     return st.selectbox(
         label,
         [0, 1],
-        format_func=lambda value:
-        "Yes" if value == 1 else "No"
+        format_func=lambda x:
+        "Yes" if x == 1 else "No"
     )
 
 
 # ============================================================
-# GENETIC VARIANT SELECTOR
+# GENETIC VARIANT INPUT
 # ============================================================
 
 def variant_input(label):
@@ -269,33 +261,29 @@ def variant_input(label):
     return st.selectbox(
         label,
         [0, 1],
-        format_func=lambda value:
-        "Present" if value == 1 else "Absent"
+        format_func=lambda x:
+        "Present" if x == 1 else "Absent"
     )
 
 
 # ============================================================
-# PATIENT-SPECIFIC CONTRIBUTION ANALYSIS
+# PATIENT-SPECIFIC EXPLANATION
 # ============================================================
 
 def calculate_patient_contributions(patient_df):
 
-    # Original prediction
-
-    scaled_patient = scaler.transform(
+    original_scaled = scaler.transform(
         patient_df
     )
 
     original_probability = float(
         model.predict(
-            scaled_patient,
+            original_scaled,
             verbose=0
         )[0][0]
     )
 
     contributions = []
-
-    # Change one feature at a time to its reference value
 
     for index, feature in enumerate(feature_names):
 
@@ -337,30 +325,26 @@ def calculate_patient_contributions(patient_df):
                 reference_value,
 
             "Contribution":
-                contribution
+                contribution,
+
+            "Absolute":
+                abs(contribution)
         })
 
     result = pd.DataFrame(
         contributions
     )
 
-    result["Absolute Contribution"] = (
-        result["Contribution"].abs()
-    )
-
     result = result.sort_values(
-        "Absolute Contribution",
+        "Absolute",
         ascending=False
     )
 
-    return (
-        result,
-        original_probability
-    )
+    return result
 
 
 # ============================================================
-# APPLICATION HEADER
+# TITLE
 # ============================================================
 
 st.title(
@@ -373,19 +357,25 @@ st.subheader(
 
 st.write(
     """
-    This research prototype estimates the probability of
-    neonatal diabetes using maternal, fetal, genetic and
-    gene-expression features.
+    This research prototype estimates the model-predicted
+    risk of neonatal diabetes using maternal, fetal,
+    genetic and gene-expression features.
     """
 )
 
+
+# ============================================================
+# IMPORTANT NOTE
+# ============================================================
+
 st.warning(
     """
-    ⚠️ **Research / Educational Prototype Only**
+    ⚠️ **Research / Educational Prototype**
 
-    This system is not a clinical diagnostic tool.
-    The prediction should not be used alone for diagnosis,
-    treatment or medical decision-making.
+    This AI Twin is intended for research and educational
+    demonstration only. It is **not a clinical diagnostic
+    tool** and should not be used alone for medical
+    diagnosis or treatment decisions.
     """
 )
 
@@ -396,27 +386,25 @@ st.warning(
 
 with st.sidebar:
 
-    st.header(
-        "🧬 AI Twin Information"
-    )
+    st.header("🧬 About the AI Twin")
 
     st.write(
-        "**Model:** Neural Network"
-    )
+        """
+        **Model:** Neural Network
 
-    st.write(
-        "**Input features:** 33"
-    )
+        **Input features:** 33
 
-    st.write(
-        "**Decision threshold:** 70%"
+        **Decision threshold:** 70%
+
+        **Purpose:** Early risk prediction research
+        """
     )
 
     st.divider()
 
     st.write(
         """
-        The Digital Twin uses:
+        The model uses:
 
         • Maternal information
 
@@ -424,7 +412,7 @@ with st.sidebar:
 
         • Genetic variants
 
-        • Gene-expression measurements
+        • Gene-expression features
         """
     )
 
@@ -434,11 +422,11 @@ with st.sidebar:
 # ============================================================
 
 st.header(
-    "👩‍⚕️ Enter Patient Information"
+    "👩‍⚕️ Patient Information"
 )
 
 with st.form(
-    "patient_information_form"
+    "patient_form"
 ):
 
     # ========================================================
@@ -449,9 +437,9 @@ with st.form(
         "👩 Maternal Information"
     )
 
-    column1, column2, column3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    with column1:
+    with col1:
 
         maternal_age = st.number_input(
             "Maternal Age (years)",
@@ -477,7 +465,7 @@ with st.form(
             step=1.0
         )
 
-    with column2:
+    with col2:
 
         diastolic_bp = st.number_input(
             "Maternal Diastolic BP",
@@ -503,7 +491,7 @@ with st.form(
             step=0.1
         )
 
-    with column3:
+    with col3:
 
         gestational_age = st.number_input(
             "Gestational Age (weeks)",
@@ -532,9 +520,9 @@ with st.form(
         "👶 Fetal Information"
     )
 
-    column1, column2, column3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    with column1:
+    with col1:
 
         fetal_heart_rate = st.number_input(
             "Fetal Heart Rate (bpm)",
@@ -552,7 +540,7 @@ with st.form(
             step=0.1
         )
 
-    with column2:
+    with col2:
 
         ultrasound_growth = st.number_input(
             "Ultrasound Growth Percentile",
@@ -570,7 +558,7 @@ with st.form(
             step=10.0
         )
 
-    with column3:
+    with col3:
 
         consanguinity = yes_no(
             "Consanguinity"
@@ -591,9 +579,9 @@ with st.form(
         "🧬 Genetic Information"
     )
 
-    column1, column2, column3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    with column1:
+    with col1:
 
         kcnj11_variant = variant_input(
             "KCNJ11 Variant"
@@ -607,7 +595,7 @@ with st.form(
             "INS Variant"
         )
 
-    with column2:
+    with col2:
 
         chr6q24 = variant_input(
             "Chr6q24 Abnormality"
@@ -621,7 +609,7 @@ with st.form(
             "HNF1B Variant"
         )
 
-    with column3:
+    with col3:
 
         gata6_variant = variant_input(
             "GATA6 Variant"
@@ -642,7 +630,7 @@ with st.form(
         "🧪 Gene Expression"
     )
 
-    expression_option = st.radio(
+    expression_available = st.radio(
         "Are gene-expression measurements available?",
         [
             "No - use reference values",
@@ -656,21 +644,17 @@ with st.form(
     # GENE EXPRESSION INPUT
     # ========================================================
 
-    if expression_option == (
+    if expression_available == (
         "Yes - enter measurements"
     ):
 
-        st.info(
-            """
-            Enter the available gene-expression measurements.
-            """
+        st.caption(
+            "Enter the available gene-expression values."
         )
 
-        expression1, expression2, expression3 = (
-            st.columns(3)
-        )
+        col1, col2, col3 = st.columns(3)
 
-        with expression1:
+        with col1:
 
             ins_expr = st.number_input(
                 "INS expression",
@@ -704,7 +688,7 @@ with st.form(
                 step=0.01
             )
 
-        with expression2:
+        with col2:
 
             gck_expr = st.number_input(
                 "GCK expression",
@@ -738,7 +722,7 @@ with st.form(
                 step=0.01
             )
 
-        with expression3:
+        with col3:
 
             neurod1_expr = st.number_input(
                 "NEUROD1 expression",
@@ -757,9 +741,6 @@ with st.form(
             )
 
     else:
-
-        # Use reference values if expression data
-        # is not available.
 
         ins_expr = get_reference_value(
             "INS_expr"
@@ -803,10 +784,8 @@ with st.form(
 
         st.info(
             """
-            Gene-expression data were not entered.
-
-            The Digital Twin will use the saved reference
-            values for these features.
+            Gene-expression values were not entered.
+            The AI Twin will use the saved reference values.
             """
         )
 
@@ -817,20 +796,20 @@ with st.form(
 
     st.divider()
 
-    predict_button = st.form_submit_button(
+    predict = st.form_submit_button(
         "🔍 Predict NDM Risk",
         use_container_width=True
     )
 
 
 # ============================================================
-# RUN PREDICTION
+# PREDICTION
 # ============================================================
 
-if predict_button:
+if predict:
 
     # ========================================================
-    # CREATE DATAFRAME
+    # CREATE PATIENT DATA
     # ========================================================
 
     patient_values = [
@@ -881,13 +860,13 @@ if predict_button:
 
 
     # ========================================================
-    # VALIDATION
+    # BASIC VALIDATION
     # ========================================================
 
     if patient_df.shape != (1, 33):
 
         st.error(
-            "❌ Exactly 33 features are required."
+            "❌ The AI Twin requires exactly 33 features."
         )
 
         st.stop()
@@ -896,7 +875,7 @@ if predict_button:
     if patient_df.isnull().any().any():
 
         st.error(
-            "❌ Missing values detected."
+            "❌ Please fill in all required values."
         )
 
         st.stop()
@@ -905,15 +884,17 @@ if predict_button:
     if diastolic_bp >= systolic_bp:
 
         st.error(
-            "❌ Maternal diastolic BP must be lower than "
-            "maternal systolic BP."
+            """
+            ❌ Maternal diastolic blood pressure should
+            be lower than systolic blood pressure.
+            """
         )
 
         st.stop()
 
 
     # ========================================================
-    # SCALE PATIENT DATA
+    # SCALE INPUT
     # ========================================================
 
     try:
@@ -925,7 +906,7 @@ if predict_button:
     except Exception as error:
 
         st.error(
-            "❌ Error while scaling patient data."
+            "❌ Error while processing the patient data."
         )
 
         st.exception(error)
@@ -934,7 +915,7 @@ if predict_button:
 
 
     # ========================================================
-    # MODEL PREDICTION
+    # PREDICT
     # ========================================================
 
     try:
@@ -949,7 +930,7 @@ if predict_button:
     except Exception as error:
 
         st.error(
-            "❌ Error while generating prediction."
+            "❌ Error while generating the prediction."
         )
 
         st.exception(error)
@@ -967,7 +948,7 @@ if predict_button:
 
 
     # ========================================================
-    # RISK CATEGORY
+    # CLASSIFICATION
     # ========================================================
 
     if probability >= DECISION_THRESHOLD:
@@ -980,7 +961,7 @@ if predict_button:
 
 
     # ========================================================
-    # RESULT SECTION
+    # RESULT
     # ========================================================
 
     st.divider()
@@ -991,133 +972,92 @@ if predict_button:
 
 
     # ========================================================
-    # RISK NOTE
+    # SIMPLE RESULT CARDS
     # ========================================================
 
-    st.info(
-        f"""
-        ### ℹ️ Risk Note
+    col1, col2 = st.columns(2)
 
-        The Digital Twin estimates a model-predicted
-        probability of **{percentage:.2f}%** for neonatal
-        diabetes.
+    with col1:
 
-        The configured decision threshold is
-        **{DECISION_THRESHOLD * 100:.0f}%**.
+        st.metric(
+            "Estimated NDM Risk",
+            f"{percentage:.2f}%"
+        )
 
-        The predicted probability is
-        **{"above" if probability >= DECISION_THRESHOLD else "below"}**
-        this threshold, so the current model classification
-        is **{risk_category}**.
+    with col2:
 
-        This result represents the output of the trained
-        machine-learning model. It is a research and
-        educational prediction and **not a medical diagnosis**.
-        """
-    )
+        st.metric(
+            "Risk Classification",
+            risk_category
+        )
 
 
     # ========================================================
-    # LARGE RISK DISPLAY
-    # ========================================================
-
-    st.markdown(
-        f"""
-        <div style="
-            text-align: center;
-            padding: 30px;
-            border-radius: 20px;
-            border: 1px solid rgba(128,128,128,0.35);
-            margin-top: 10px;
-            margin-bottom: 25px;
-        ">
-
-            <div style="
-                font-size: 20px;
-                font-weight: 600;
-            ">
-                NDM RISK PROBABILITY
-            </div>
-
-            <div style="
-                font-size: 68px;
-                font-weight: 800;
-                margin-top: 10px;
-                margin-bottom: 10px;
-            ">
-                {percentage:.2f}%
-            </div>
-
-            <div style="
-                font-size: 28px;
-                font-weight: 700;
-            ">
-                {risk_category}
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-    # ========================================================
-    # RISK GRAPH
+    # OVERALL GRAPH
     # ========================================================
 
     st.subheader(
         "📊 Overall Prediction"
     )
 
+    st.write(
+        f"""
+        The model estimates an NDM risk of
+        **{percentage:.2f}%** for the entered patient data.
+        """
+    )
+
     st.progress(
         float(probability)
+    )
+
+    st.caption(
+        "0% ───────────────────────────── 100%"
     )
 
     graph_col1, graph_col2, graph_col3 = st.columns(3)
 
     with graph_col1:
 
-        st.markdown(
-            "**🟢 LOWER RISK**"
-        )
+        st.write("🟢 **LOWER RISK**")
 
-        st.caption(
-            "0% – 30%"
-        )
+        st.caption("0% – 30%")
 
     with graph_col2:
 
-        st.markdown(
-            "**🟡 INTERMEDIATE**"
-        )
+        st.write("🟡 **INTERMEDIATE**")
 
-        st.caption(
-            "30% – 70%"
-        )
+        st.caption("30% – 70%")
 
     with graph_col3:
 
-        st.markdown(
-            "**🔴 HIGHER RISK**"
-        )
+        st.write("🔴 **HIGHER RISK**")
 
-        st.caption(
-            "70% – 100%"
-        )
+        st.caption("70% – 100%")
 
 
     # ========================================================
-    # THRESHOLD RESULT
+    # RISK NOTE
     # ========================================================
+
+    st.subheader(
+        "ℹ️ What does this result mean?"
+    )
 
     if probability >= DECISION_THRESHOLD:
 
         st.error(
             f"""
-            **Model classification: HIGH RISK**
+            The model estimated a risk of **{percentage:.2f}%**.
 
-            The predicted probability of **{percentage:.2f}%**
-            is above the **70% decision threshold**.
+            This is above the configured **70% decision
+            threshold**, so the model classifies this input
+            as **HIGH RISK**.
+
+            This does **not** mean that the baby has
+            neonatal diabetes. It means that the entered
+            feature combination produced a high-risk
+            prediction from this trained model.
             """
         )
 
@@ -1125,16 +1065,22 @@ if predict_button:
 
         st.success(
             f"""
-            **Model classification: LOWER RISK**
+            The model estimated a risk of **{percentage:.2f}%**.
 
-            The predicted probability of **{percentage:.2f}%**
-            is below the **70% decision threshold**.
+            This is below the configured **70% decision
+            threshold**, so the model classifies this input
+            as **LOWER RISK**.
+
+            This does **not** guarantee that neonatal
+            diabetes will not occur. It means that the
+            entered feature combination produced a
+            lower-risk prediction from this trained model.
             """
         )
 
 
     # ========================================================
-    # PATIENT-SPECIFIC EXPLANATION
+    # WHY THIS RESULT?
     # ========================================================
 
     st.divider()
@@ -1145,36 +1091,35 @@ if predict_button:
 
     st.write(
         """
-        **Why this patient received this result**
+        The AI Twin looks at the combination of the patient's
+        maternal, fetal, genetic and gene-expression values.
 
-        The Digital Twin compares the patient's entered
-        values with reference values used by the model.
+        To explain this particular prediction, each feature
+        is compared with its reference value.
 
-        A **positive contribution** means that the feature
-        moved the model prediction upward for this patient.
+        **⬆️ Positive contribution:** the feature moved the
+        model prediction toward higher risk.
 
-        A **negative contribution** means that the feature
-        moved the model prediction downward.
+        **⬇️ Negative contribution:** the feature moved the
+        model prediction toward lower risk.
 
-        These contributions describe the model's estimated
-        influence on this particular prediction. They should
-        not be interpreted as proof that a feature caused
-        neonatal diabetes.
+        These are model-based explanations. They do not mean
+        that a feature medically caused the disease.
         """
     )
 
 
     # ========================================================
-    # CALCULATE CONTRIBUTIONS
+    # CALCULATE EXPLANATIONS
     # ========================================================
 
     with st.spinner(
-        "🔎 Analyzing patient-specific factors..."
+        "🔎 Analyzing the factors behind this prediction..."
     ):
 
         try:
 
-            contribution_df, verified_probability = (
+            contribution_df = (
                 calculate_patient_contributions(
                     patient_df
                 )
@@ -1183,7 +1128,7 @@ if predict_button:
         except Exception as error:
 
             st.error(
-                "❌ Unable to calculate patient-specific explanation."
+                "❌ Could not generate the explanation."
             )
 
             st.exception(error)
@@ -1192,10 +1137,10 @@ if predict_button:
 
 
     # ========================================================
-    # POSITIVE CONTRIBUTIONS
+    # POSITIVE FEATURES
     # ========================================================
 
-    increasing_risk = contribution_df[
+    increasing = contribution_df[
         contribution_df["Contribution"] > 0
     ].sort_values(
         "Contribution",
@@ -1204,10 +1149,10 @@ if predict_button:
 
 
     # ========================================================
-    # NEGATIVE CONTRIBUTIONS
+    # NEGATIVE FEATURES
     # ========================================================
 
-    decreasing_risk = contribution_df[
+    decreasing = contribution_df[
         contribution_df["Contribution"] < 0
     ].sort_values(
         "Contribution",
@@ -1216,39 +1161,39 @@ if predict_button:
 
 
     # ========================================================
-    # TWO-COLUMN EXPLANATION
+    # SHOW EXPLANATION
     # ========================================================
 
-    positive_column, negative_column = st.columns(2)
+    left, right = st.columns(2)
 
 
     # ========================================================
-    # FEATURES INCREASING RISK
+    # INCREASING
     # ========================================================
 
-    with positive_column:
+    with left:
 
         st.subheader(
-            "⬆️ Increasing predicted risk"
+            "⬆️ Factors increasing the predicted risk"
         )
 
-        if increasing_risk.empty:
+        if increasing.empty:
 
-            st.success(
-                "No positive feature contributions were detected."
+            st.write(
+                "No strong positive contributions were detected."
             )
 
         else:
 
-            for _, row in increasing_risk.iterrows():
+            for _, row in increasing.iterrows():
 
                 st.markdown(
                     f"""
                     **{row["Feature"]}**
 
-                    Patient value: `{row["Patient Value"]}`
+                    Patient value: **{row["Patient Value"]}**
 
-                    Reference value: `{row["Reference Value"]}`
+                    Reference value: **{row["Reference Value"]:.4f}**
 
                     Estimated contribution:
                     **+{row["Contribution"]:.5f}**
@@ -1259,32 +1204,32 @@ if predict_button:
 
 
     # ========================================================
-    # FEATURES DECREASING RISK
+    # DECREASING
     # ========================================================
 
-    with negative_column:
+    with right:
 
         st.subheader(
-            "⬇️ Decreasing predicted risk"
+            "⬇️ Factors decreasing the predicted risk"
         )
 
-        if decreasing_risk.empty:
+        if decreasing.empty:
 
-            st.success(
-                "No negative feature contributions were detected."
+            st.write(
+                "No strong negative contributions were detected."
             )
 
         else:
 
-            for _, row in decreasing_risk.iterrows():
+            for _, row in decreasing.iterrows():
 
                 st.markdown(
                     f"""
                     **{row["Feature"]}**
 
-                    Patient value: `{row["Patient Value"]}`
+                    Patient value: **{row["Patient Value"]}**
 
-                    Reference value: `{row["Reference Value"]}`
+                    Reference value: **{row["Reference Value"]:.4f}**
 
                     Estimated contribution:
                     **{row["Contribution"]:.5f}**
@@ -1295,24 +1240,20 @@ if predict_button:
 
 
     # ========================================================
-    # FINAL INTERPRETATION NOTE
+    # FINAL NOTE
     # ========================================================
-
-    st.divider()
 
     st.info(
         """
-        ### 🧬 Interpretation Note
+        ### 🧬 Important Note
 
-        The risk percentage represents the probability
-        estimated by the trained AI model for the entered
-        feature combination.
+        The risk percentage and feature contributions are
+        generated by the trained machine-learning model.
 
-        The feature contributions are model explanations
-        intended to help understand the prediction. They do
-        not establish medical causation.
+        They are intended to help explain the model's output,
+        not to replace professional medical assessment.
 
-        **This Digital Twin is a research/educational
-        prototype and is not a clinical diagnostic system.**
+        **This Digital Twin is a research and educational
+        prototype, not a clinical diagnostic system.**
         """
-    )
+        )
