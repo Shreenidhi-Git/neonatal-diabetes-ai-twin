@@ -93,7 +93,9 @@ if missing_files:
 
     st.error("❌ Required AI Twin files are missing.")
 
-    st.write("Please make sure these files are in your repository:")
+    st.write(
+        "Please make sure these files are in your repository:"
+    )
 
     for file in missing_files:
         st.write(f"- `{file}`")
@@ -352,7 +354,7 @@ st.title(
 )
 
 st.subheader(
-    "Early Neonatal Diabetes Risk Prediction"
+    "Early Neonatal Diabetes Risk Estimation"
 )
 
 st.write(
@@ -362,6 +364,120 @@ st.write(
     genetic and gene-expression features.
     """
 )
+
+
+# ============================================================
+# DIGITAL TWIN PROFILE
+# ============================================================
+
+st.subheader(
+    "🧬 Digital Twin Profile"
+)
+
+st.write(
+    """
+    The Digital Twin represents the entered pregnancy data
+    across four information layers used by the AI model.
+    """
+)
+
+profile_col1, profile_col2, profile_col3, profile_col4 = (
+    st.columns(4)
+)
+
+
+with profile_col1:
+
+    st.info(
+        """
+        ### 👩 Maternal
+
+        ✓ Age
+
+        ✓ BMI
+
+        ✓ Blood Pressure
+
+        ✓ Glucose
+
+        ✓ HbA1c
+
+        ✓ Pregnancy history
+        """
+    )
+
+
+with profile_col2:
+
+    st.info(
+        """
+        ### 👶 Fetal
+
+        ✓ Gestational age
+
+        ✓ Heart rate
+
+        ✓ Fetal movement
+
+        ✓ Growth percentile
+
+        ✓ Estimated weight
+        """
+    )
+
+
+with profile_col3:
+
+    st.info(
+        """
+        ### 🧬 Genetic
+
+        ✓ KCNJ11
+
+        ✓ ABCC8
+
+        ✓ INS
+
+        ✓ GCK
+
+        ✓ HNF1B
+
+        ✓ GATA6
+
+        ✓ GLIS3
+
+        ✓ Chr6q24
+        """
+    )
+
+
+with profile_col4:
+
+    st.info(
+        """
+        ### 🧪 Molecular
+
+        ✓ INS
+
+        ✓ PDX1
+
+        ✓ NKX6_1
+
+        ✓ MAFA
+
+        ✓ GCK
+
+        ✓ SLC2A2
+
+        ✓ ABCC8
+
+        ✓ KCNJ11
+
+        ✓ NEUROD1
+
+        ✓ HNF1B
+        """
+    )
 
 
 # ============================================================
@@ -386,7 +502,9 @@ st.warning(
 
 with st.sidebar:
 
-    st.header("🧬 About the AI Twin")
+    st.header(
+        "🧬 About the AI Twin"
+    )
 
     st.write(
         """
@@ -396,7 +514,7 @@ with st.sidebar:
 
         **Decision threshold:** 70%
 
-        **Purpose:** Early risk prediction research
+        **Purpose:** Early risk estimation research
         """
     )
 
@@ -413,6 +531,15 @@ with st.sidebar:
         • Genetic variants
 
         • Gene-expression features
+        """
+    )
+
+    st.divider()
+
+    st.caption(
+        """
+        This system is a research prototype and
+        is not clinically validated.
         """
     )
 
@@ -785,7 +912,9 @@ with st.form(
         st.info(
             """
             Gene-expression values were not entered.
-            The AI Twin will use the saved reference values.
+
+            The AI Twin will use the saved reference values
+            for the molecular features.
             """
         )
 
@@ -972,7 +1101,7 @@ if predict:
 
 
     # ========================================================
-    # SIMPLE RESULT CARDS
+    # RESULT CARDS
     # ========================================================
 
     col1, col2 = st.columns(2)
@@ -993,7 +1122,7 @@ if predict:
 
 
     # ========================================================
-    # OVERALL GRAPH
+    # OVERALL RISK VISUALIZATION
     # ========================================================
 
     st.subheader(
@@ -1002,38 +1131,110 @@ if predict:
 
     st.write(
         f"""
-        The model estimates an NDM risk of
+        The Digital Twin estimates an NDM risk of
         **{percentage:.2f}%** for the entered patient data.
         """
     )
 
-    st.progress(
-        float(probability)
+
+    # ========================================================
+    # RISK BAR
+    # ========================================================
+
+    st.markdown(
+        f"""
+        <div style="
+            width:100%;
+            background:#eeeeee;
+            border-radius:15px;
+            height:35px;
+            margin-top:20px;
+            margin-bottom:10px;
+            overflow:hidden;
+        ">
+
+            <div style="
+                width:{percentage:.2f}%;
+                height:35px;
+                border-radius:15px;
+                background:linear-gradient(
+                    90deg,
+                    #4CAF50 0%,
+                    #FFC107 50%,
+                    #F44336 100%
+                );
+            ">
+            </div>
+
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+
+
+    # ========================================================
+    # LARGE PERCENTAGE
+    # ========================================================
+
+    st.markdown(
+        f"""
+        <div style="
+            text-align:center;
+            font-size:36px;
+            font-weight:bold;
+            margin-top:10px;
+            margin-bottom:20px;
+        ">
+            {percentage:.2f}%
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+    # ========================================================
+    # THRESHOLD VISUALIZATION
+    # ========================================================
+
+    risk_col1, risk_col2, risk_col3 = st.columns(3)
+
+    with risk_col1:
+
+        st.success(
+            """
+            🟢 **LOWER RISK**
+
+            Below 70%
+            """
+        )
+
+    with risk_col2:
+
+        st.info(
+            """
+            ⚪ **DECISION THRESHOLD**
+
+            70%
+            """
+        )
+
+    with risk_col3:
+
+        st.error(
+            """
+            🔴 **HIGH RISK**
+
+            70% or above
+            """
+        )
+
 
     st.caption(
-        "0% ───────────────────────────── 100%"
+        """
+        The 70% value is the configured decision threshold
+        used to classify the model output.
+        """
     )
-
-    graph_col1, graph_col2, graph_col3 = st.columns(3)
-
-    with graph_col1:
-
-        st.write("🟢 **LOWER RISK**")
-
-        st.caption("0% – 30%")
-
-    with graph_col2:
-
-        st.write("🟡 **INTERMEDIATE**")
-
-        st.caption("30% – 70%")
-
-    with graph_col3:
-
-        st.write("🔴 **HIGHER RISK**")
-
-        st.caption("70% – 100%")
 
 
     # ========================================================
@@ -1044,20 +1245,24 @@ if predict:
         "ℹ️ What does this result mean?"
     )
 
+
     if probability >= DECISION_THRESHOLD:
 
         st.error(
             f"""
-            The model estimated a risk of **{percentage:.2f}%**.
+            The model estimated a risk of
+            **{percentage:.2f}%**.
 
             This is above the configured **70% decision
             threshold**, so the model classifies this input
             as **HIGH RISK**.
 
             This does **not** mean that the baby has
-            neonatal diabetes. It means that the entered
-            feature combination produced a high-risk
-            prediction from this trained model.
+            neonatal diabetes.
+
+            It means that the entered feature combination
+            produced a high-risk prediction from this
+            trained model.
             """
         )
 
@@ -1065,18 +1270,92 @@ if predict:
 
         st.success(
             f"""
-            The model estimated a risk of **{percentage:.2f}%**.
+            The model estimated a risk of
+            **{percentage:.2f}%**.
 
             This is below the configured **70% decision
             threshold**, so the model classifies this input
             as **LOWER RISK**.
 
             This does **not** guarantee that neonatal
-            diabetes will not occur. It means that the
-            entered feature combination produced a
-            lower-risk prediction from this trained model.
+            diabetes will not occur.
+
+            It means that the entered feature combination
+            produced a lower-risk prediction from this
+            trained model.
             """
         )
+
+
+    # ========================================================
+    # DATA AVAILABILITY SUMMARY
+    # ========================================================
+
+    st.divider()
+
+    st.subheader(
+        "📋 Digital Twin Data Status"
+    )
+
+    status_col1, status_col2, status_col3, status_col4 = (
+        st.columns(4)
+    )
+
+
+    with status_col1:
+
+        st.success(
+            """
+            👩 **Maternal Data**
+
+            Available
+            """
+        )
+
+
+    with status_col2:
+
+        st.success(
+            """
+            👶 **Fetal Data**
+
+            Available
+            """
+        )
+
+
+    with status_col3:
+
+        st.success(
+            """
+            🧬 **Genetic Data**
+
+            Available
+            """
+        )
+
+
+    with status_col4:
+
+        if expression_available == "Yes - enter measurements":
+
+            st.success(
+                """
+                🧪 **Gene Expression**
+
+                Entered
+                """
+            )
+
+        else:
+
+            st.warning(
+                """
+                🧪 **Gene Expression**
+
+                Reference values used
+                """
+            )
 
 
     # ========================================================
@@ -1137,7 +1416,7 @@ if predict:
 
 
     # ========================================================
-    # POSITIVE FEATURES
+    # TOP POSITIVE FEATURES
     # ========================================================
 
     increasing = contribution_df[
@@ -1149,7 +1428,7 @@ if predict:
 
 
     # ========================================================
-    # NEGATIVE FEATURES
+    # TOP NEGATIVE FEATURES
     # ========================================================
 
     decreasing = contribution_df[
@@ -1161,7 +1440,7 @@ if predict:
 
 
     # ========================================================
-    # SHOW EXPLANATION
+    # EXPLANATION TABLES
     # ========================================================
 
     left, right = st.columns(2)
@@ -1174,13 +1453,13 @@ if predict:
     with left:
 
         st.subheader(
-            "⬆️ Factors increasing the predicted risk"
+            "⬆️ Factors increasing predicted risk"
         )
 
         if increasing.empty:
 
             st.write(
-                "No strong positive contributions were detected."
+                "No positive contributions were detected."
             )
 
         else:
@@ -1191,9 +1470,11 @@ if predict:
                     f"""
                     **{row["Feature"]}**
 
-                    Patient value: **{row["Patient Value"]}**
+                    Patient value:
+                    **{row["Patient Value"]}**
 
-                    Reference value: **{row["Reference Value"]:.4f}**
+                    Reference value:
+                    **{row["Reference Value"]:.4f}**
 
                     Estimated contribution:
                     **+{row["Contribution"]:.5f}**
@@ -1210,13 +1491,13 @@ if predict:
     with right:
 
         st.subheader(
-            "⬇️ Factors decreasing the predicted risk"
+            "⬇️ Factors decreasing predicted risk"
         )
 
         if decreasing.empty:
 
             st.write(
-                "No strong negative contributions were detected."
+                "No negative contributions were detected."
             )
 
         else:
@@ -1227,9 +1508,11 @@ if predict:
                     f"""
                     **{row["Feature"]}**
 
-                    Patient value: **{row["Patient Value"]}**
+                    Patient value:
+                    **{row["Patient Value"]}**
 
-                    Reference value: **{row["Reference Value"]:.4f}**
+                    Reference value:
+                    **{row["Reference Value"]:.4f}**
 
                     Estimated contribution:
                     **{row["Contribution"]:.5f}**
@@ -1256,4 +1539,17 @@ if predict:
         **This Digital Twin is a research and educational
         prototype, not a clinical diagnostic system.**
         """
+    )
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+st.divider()
+
+st.caption(
+    """
+    🧬 Neonatal Diabetes AI Twin | Research & Educational Prototype
+    """
         )
