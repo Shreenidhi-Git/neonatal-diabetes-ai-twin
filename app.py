@@ -19,7 +19,7 @@ st.set_page_config(
 
 
 # ============================================================
-# FILE NAMES
+# MODEL FILES
 # ============================================================
 
 MODEL_FILE = "ndm_clean_neural_network.keras"
@@ -29,7 +29,7 @@ REFERENCE_FILE = "ndm_reference_values.pkl"
 
 
 # ============================================================
-# 33 MODEL FEATURES
+# 33 FEATURES USED BY THE MODEL
 # ============================================================
 
 EXPECTED_FEATURES = [
@@ -40,14 +40,17 @@ EXPECTED_FEATURES = [
     "Maternal_Fasting_Glucose_mg_dL",
     "Maternal_HbA1c_percent",
     "Gestational_Age_weeks",
+
     "Fetal_Heart_Rate_bpm",
     "Fetal_Movement_per_hour",
     "Ultrasound_Growth_Percentile",
     "Estimated_Fetal_Weight_g",
+
     "Family_History_Diabetes",
     "Consanguinity",
     "Previous_Gestational_Diabetes",
     "Maternal_Autoimmune_History",
+
     "KCNJ11_Variant",
     "ABCC8_Variant",
     "INS_Variant",
@@ -56,6 +59,7 @@ EXPECTED_FEATURES = [
     "HNF1B_Variant",
     "GATA6_Variant",
     "GLIS3_Variant",
+
     "INS_expr",
     "PDX1_expr",
     "NKX6_1_expr",
@@ -70,7 +74,7 @@ EXPECTED_FEATURES = [
 
 
 # ============================================================
-# CHECK REQUIRED FILES
+# CHECK MODEL FILES
 # ============================================================
 
 required_files = [
@@ -80,50 +84,85 @@ required_files = [
     REFERENCE_FILE
 ]
 
-missing_files = [file for file in required_files if not os.path.exists(file)]
+missing_files = [
+    file for file in required_files
+    if not os.path.exists(file)
+]
 
 if missing_files:
-    st.error("Required AI Twin files are missing:")
+
+    st.error("Required AI Twin files are missing.")
+
     for file in missing_files:
-        st.write(f"- {file}")
+        st.write(f"❌ {file}")
+
+    st.info(
+        "Make sure these files are uploaded to the same "
+        "GitHub repository as app.py."
+    )
+
     st.stop()
 
 
 # ============================================================
-# LOAD MODEL AND SUPPORT FILES
+# LOAD AI TWIN
 # ============================================================
 
 @st.cache_resource
 def load_ai_twin():
 
-    model = tf.keras.models.load_model(MODEL_FILE)
+    model = tf.keras.models.load_model(
+        MODEL_FILE
+    )
 
-    scaler = joblib.load(SCALER_FILE)
+    scaler = joblib.load(
+        SCALER_FILE
+    )
 
-    feature_names = joblib.load(FEATURE_FILE)
+    feature_names = joblib.load(
+        FEATURE_FILE
+    )
 
-    reference_values = joblib.load(REFERENCE_FILE)
+    reference_values = joblib.load(
+        REFERENCE_FILE
+    )
 
-    return model, scaler, feature_names, reference_values
-
-
-model, scaler, feature_names, reference_values = load_ai_twin()
-
-
-# ============================================================
-# VALIDATE FEATURES
-# ============================================================
-
-if list(feature_names) != EXPECTED_FEATURES:
-
-    st.warning(
-        "Warning: The feature order stored with the model "
-        "does not exactly match the expected feature order."
+    return (
+        model,
+        scaler,
+        feature_names,
+        reference_values
     )
 
 
+try:
+
+    model, scaler, feature_names, reference_values = load_ai_twin()
+
+except Exception as e:
+
+    st.error("The AI Twin model could not be loaded.")
+
+    st.code(str(e))
+
+    st.stop()
+
+
 # ============================================================
-# HELPER FUNCTIONS
+# VALIDATE FEATURE COUNT
+# ============================================================
+
+if len(EXPECTED_FEATURES) != 33:
+
+    st.error(
+        "Internal error: expected exactly 33 features."
+    )
+
+    st.stop()
+
+
+# ============================================================
+# HELPER FUNCTION
 # ============================================================
 
 def get_reference_value(feature):
@@ -131,19 +170,33 @@ def get_reference_value(feature):
     try:
 
         if isinstance(reference_values, dict):
-            return float(reference_values[feature])
 
-        if isinstance(reference_values, pd.Series):
-            return float(reference_values[feature])
+            return float(
+                reference_values[feature]
+            )
 
-        if isinstance(reference_values, pd.DataFrame):
-            return float(reference_values[feature].iloc[0])
+        elif isinstance(reference_values, pd.Series):
+
+            return float(
+                reference_values[feature]
+            )
+
+        elif isinstance(reference_values, pd.DataFrame):
+
+            return float(
+                reference_values[feature].iloc[0]
+            )
 
     except Exception:
-        pass
+
+        return 0.0
 
     return 0.0
 
+
+# ============================================================
+# YES / NO INPUT
+# ============================================================
 
 def yes_no_input(label):
 
@@ -152,75 +205,95 @@ def yes_no_input(label):
         ["No", "Yes"]
     )
 
-    return 1 if value == "Yes" else 0
+    if value == "Yes":
+        return 1
 
+    return 0
+
+
+# ============================================================
+# GENETIC VARIANT INPUT
+# ============================================================
 
 def variant_input(label):
 
     value = st.selectbox(
         label,
-        ["No variant detected", "Variant detected"]
+        [
+            "No variant detected",
+            "Variant detected"
+        ]
     )
 
-    return 1 if value == "Variant detected" else 0
+    if value == "Variant detected":
+        return 1
+
+    return 0
 
 
 # ============================================================
-# PATIENT-SPECIFIC EXPLANATION
+# PATIENT-SPECIFIC FEATURE CONTRIBUTIONS
 # ============================================================
 
-def calculate_patient_contributions(input_data, original_probability):
+def calculate_patient_contributions(
+    input_data,
+    original_probability
+):
 
     contributions = []
 
-    for feature in EXPECTED_FEATURES:
+    for index, feature in enumerate(
+        EXPECTED_FEATURES
+    ):
 
-        reference_value = get_reference_value(feature)
+        reference_value = get_reference_value(
+            feature
+        )
 
-        modified_data = input_data.copy()
+        modified_data = np.array(
+            input_data,
+            dtype=float
+        ).copy()
 
-        feature_index = EXPECTED_FEATURES.index(feature)
-
-        modified_data[feature_index] = reference_value
+        modified_data[index] = reference_value
 
         try:
 
             modified_scaled = scaler.transform(
-                np.array(modified_data).reshape(1, -1)
+                modified_data.reshape(1, -1)
+            )
+
+            modified_prediction = model.predict(
+                modified_scaled,
+                verbose=0
             )
 
             modified_probability = float(
-                model.predict(
-                    modified_scaled,
-                    verbose=0
-                )[0][0]
+                modified_prediction[0][0]
             )
 
-            contribution = original_probability - modified_probability
-
-            contributions.append(
-                {
-                    "feature": feature,
-                    "patient_value": input_data[feature_index],
-                    "reference_value": reference_value,
-                    "contribution": contribution
-                }
+            contribution = (
+                original_probability
+                - modified_probability
             )
 
         except Exception:
 
-            contributions.append(
-                {
-                    "feature": feature,
-                    "patient_value": input_data[feature_index],
-                    "reference_value": reference_value,
-                    "contribution": 0
-                }
-            )
+            contribution = 0.0
 
-    contributions = sorted(
-        contributions,
-        key=lambda x: abs(x["contribution"]),
+        contributions.append(
+            {
+                "feature": feature,
+                "patient_value": input_data[index],
+                "reference_value": reference_value,
+                "contribution": contribution
+            }
+        )
+
+    contributions.sort(
+        key=lambda x: abs(
+            x["contribution"]
+        ),
         reverse=True
     )
 
@@ -238,6 +311,11 @@ st.write(
     "using maternal, fetal, genetic and molecular features."
 )
 
+
+# ============================================================
+# DISCLAIMER
+# ============================================================
+
 st.info(
     "Research / educational prototype only. "
     "This system is not a clinical diagnostic tool."
@@ -251,17 +329,23 @@ st.info(
 st.sidebar.title("🧬 AI Twin")
 
 st.sidebar.write(
-    "Enter the available maternal, fetal, genetic "
-    "and gene-expression information."
+    "Enter the available patient information "
+    "to generate an estimated NDM risk."
 )
 
 st.sidebar.markdown("---")
 
-st.sidebar.write("**Model:** Neural Network")
+st.sidebar.write(
+    "**Model:** Neural Network"
+)
 
-st.sidebar.write("**Input Features:** 33")
+st.sidebar.write(
+    "**Input Features:** 33"
+)
 
-st.sidebar.write("**Decision Threshold:** 70%")
+st.sidebar.write(
+    "**Decision Threshold:** 70%"
+)
 
 
 # ============================================================
@@ -271,6 +355,7 @@ st.sidebar.write("**Decision Threshold:** 70%")
 st.header("👩 Maternal Information")
 
 col1, col2, col3 = st.columns(3)
+
 
 with col1:
 
@@ -354,6 +439,7 @@ st.header("👶 Fetal Information")
 
 col1, col2, col3 = st.columns(3)
 
+
 with col1:
 
     fetal_heart_rate = st.number_input(
@@ -399,6 +485,7 @@ st.header("🧬 Genetic Information")
 
 col1, col2, col3 = st.columns(3)
 
+
 with col1:
 
     kcnj11_variant = variant_input(
@@ -441,18 +528,17 @@ with col3:
 
 
 # ============================================================
-# GENE EXPRESSION
+# GENE EXPRESSION INFORMATION
 # ============================================================
 
 st.header("🔬 Gene Expression Information")
 
 st.write(
-    "Enter gene-expression values when available. "
-    "If molecular information is unavailable, the reference "
-    "values can be used for the prototype."
+    "Enter molecular gene-expression values when available."
 )
 
 col1, col2, col3 = st.columns(3)
+
 
 with col1:
 
@@ -514,11 +600,12 @@ with col3:
 
 
 # ============================================================
-# CREATE INPUT VECTOR
+# CREATE THE 33-FEATURE INPUT
 # ============================================================
 
 input_data = [
 
+    # Maternal
     maternal_age,
     maternal_bmi,
     systolic_bp,
@@ -527,16 +614,19 @@ input_data = [
     hba1c,
     gestational_age,
 
+    # Fetal
     fetal_heart_rate,
     fetal_movement,
     growth_percentile,
     fetal_weight,
 
+    # Maternal history
     family_history,
     consanguinity,
     previous_gdm,
     autoimmune_history,
 
+    # Genetic
     kcnj11_variant,
     abcc8_variant,
     ins_variant,
@@ -546,6 +636,7 @@ input_data = [
     gata6_variant,
     glis3_variant,
 
+    # Gene expression
     ins_expr,
     pdx1_expr,
     nkx6_1_expr,
@@ -557,6 +648,20 @@ input_data = [
     neurod1_expr,
     hnf1b_expr
 ]
+
+
+# ============================================================
+# VERIFY INPUT COUNT
+# ============================================================
+
+if len(input_data) != 33:
+
+    st.error(
+        f"Input error: {len(input_data)} features "
+        "were generated instead of 33."
+    )
+
+    st.stop()
 
 
 # ============================================================
@@ -573,35 +678,66 @@ predict_button = st.button(
 
 
 # ============================================================
-# PREDICTION
+# RUN PREDICTION
 # ============================================================
 
 if predict_button:
 
     try:
 
+        # ----------------------------------------------------
+        # Convert input to NumPy array
+        # ----------------------------------------------------
+
         input_array = np.array(
             input_data,
             dtype=float
         ).reshape(1, -1)
 
-        # Scale the data
+
+        # ----------------------------------------------------
+        # Scale input
+        # ----------------------------------------------------
+
         scaled_input = scaler.transform(
             input_array
         )
 
+
+        # ----------------------------------------------------
         # Neural network prediction
+        # ----------------------------------------------------
+
         prediction = model.predict(
             scaled_input,
             verbose=0
         )
 
-        probability = float(prediction[0][0])
+
+        probability = float(
+            prediction[0][0]
+        )
+
+
+        # Keep probability between 0 and 1
+        probability = max(
+            0.0,
+            min(
+                1.0,
+                probability
+            )
+        )
+
 
         percentage = probability * 100
 
-        # 70% threshold
+
+        # ----------------------------------------------------
+        # DECISION THRESHOLD
+        # ----------------------------------------------------
+
         threshold = 0.70
+
 
         if probability >= threshold:
 
@@ -620,7 +756,9 @@ if predict_button:
 
         st.header("🧬 Digital Twin Prediction")
 
+
         result_col1, result_col2 = st.columns(2)
+
 
         with result_col1:
 
@@ -644,16 +782,30 @@ if predict_button:
 
         st.subheader("👤 Digital Twin Profile")
 
+
         profile1, profile2, profile3, profile4 = st.columns(4)
+
 
         with profile1:
 
             st.markdown("### 👩 Maternal")
 
-            st.write(f"Age: {maternal_age:.1f} years")
-            st.write(f"BMI: {maternal_bmi:.1f}")
-            st.write(f"Fasting glucose: {fasting_glucose:.1f}")
-            st.write(f"HbA1c: {hba1c:.1f}%")
+            st.write(
+                f"Age: {maternal_age:.1f} years"
+            )
+
+            st.write(
+                f"BMI: {maternal_bmi:.1f}"
+            )
+
+            st.write(
+                f"Fasting glucose: "
+                f"{fasting_glucose:.1f} mg/dL"
+            )
+
+            st.write(
+                f"HbA1c: {hba1c:.1f}%"
+            )
 
 
         with profile2:
@@ -661,19 +813,23 @@ if predict_button:
             st.markdown("### 👶 Fetal")
 
             st.write(
-                f"Heart rate: {fetal_heart_rate:.0f} bpm"
+                f"Heart rate: "
+                f"{fetal_heart_rate:.0f} bpm"
             )
 
             st.write(
-                f"Movement: {fetal_movement:.0f}/hour"
+                f"Movement: "
+                f"{fetal_movement:.0f}/hour"
             )
 
             st.write(
-                f"Growth percentile: {growth_percentile:.0f}%"
+                f"Growth percentile: "
+                f"{growth_percentile:.0f}%"
             )
 
             st.write(
-                f"Estimated weight: {fetal_weight:.0f} g"
+                f"Estimated weight: "
+                f"{fetal_weight:.0f} g"
             )
 
 
@@ -681,19 +837,26 @@ if predict_button:
 
             st.markdown("### 🧬 Genetic")
 
-            genetic_count = sum([
-                kcnj11_variant,
-                abcc8_variant,
-                ins_variant,
-                chr6q24,
-                gck_variant,
-                hnf1b_variant,
-                gata6_variant,
-                glis3_variant
-            ])
+            genetic_count = sum(
+                [
+                    kcnj11_variant,
+                    abcc8_variant,
+                    ins_variant,
+                    chr6q24,
+                    gck_variant,
+                    hnf1b_variant,
+                    gata6_variant,
+                    glis3_variant
+                ]
+            )
 
             st.write(
-                f"Variants/abnormalities detected: {genetic_count}"
+                f"Variants/abnormalities: "
+                f"{genetic_count}"
+            )
+
+            st.write(
+                "8 genetic indicators"
             )
 
 
@@ -701,51 +864,56 @@ if predict_button:
 
             st.markdown("### 🔬 Molecular")
 
-            st.write("Gene-expression layer")
+            st.write(
+                "Gene-expression layer"
+            )
 
-            st.write("9 molecular features")
+            st.write(
+                "10 molecular features"
+            )
 
-            st.write("Patient-specific input")
+            st.write(
+                "Patient-specific input"
+            )
 
 
         # ====================================================
-        # REAL GRAPH
+        # OVERALL PREDICTION GRAPH
         # ====================================================
 
-        st.subheader("📊 Overall Prediction Graph")
+        st.subheader("📊 Overall Prediction")
+
 
         st.write(
-            "The graph shows the estimated neonatal diabetes "
-            "risk produced by the neural network."
+            "The graph shows the estimated NDM risk "
+            "generated by the neural network."
         )
+
 
         # Create graph
         fig, ax = plt.subplots(
-            figsize=(10, 2.8)
+            figsize=(10, 3)
         )
 
-        # Background range
-        ax.barh(
-            ["NDM Risk"],
-            [100],
-            alpha=0.15
-        )
 
-        # Prediction
+        # Risk bar
         ax.barh(
             ["NDM Risk"],
             [percentage],
             alpha=0.85
         )
 
-        # Decision threshold
+
+        # 70% threshold
         ax.axvline(
-            70,
+            x=70,
             linestyle="--",
-            linewidth=2
+            linewidth=2,
+            label="70% Decision Threshold"
         )
 
-        # Text
+
+        # Prediction value
         ax.text(
             percentage,
             0,
@@ -756,6 +924,8 @@ if predict_button:
             fontweight="bold"
         )
 
+
+        # Threshold label
         ax.text(
             70,
             0.35,
@@ -764,26 +934,58 @@ if predict_button:
             fontsize=10
         )
 
-        ax.set_xlim(0, 100)
+
+        # Axis
+        ax.set_xlim(
+            0,
+            100
+        )
+
 
         ax.set_xlabel(
             "Estimated NDM Risk (%)"
         )
 
+
         ax.set_title(
             "AI Twin Risk Prediction"
         )
+
 
         ax.grid(
             axis="x",
             alpha=0.25
         )
 
+
+        ax.legend(
+            loc="upper left"
+        )
+
+
         plt.tight_layout()
 
+
+        # Display graph
         st.pyplot(fig)
 
+
+        # Close figure
         plt.close(fig)
+
+
+        # ====================================================
+        # RISK SCALE
+        # ====================================================
+
+        st.markdown(
+            "**Risk scale:** 0% ───────── 50% ───────── 70% ───────── 100%"
+        )
+
+        st.caption(
+            "Below 70% = Lower Risk | "
+            "70% or above = High Risk"
+        )
 
 
         # ====================================================
@@ -792,20 +994,21 @@ if predict_button:
 
         st.subheader("📌 Risk Interpretation")
 
+
         if probability >= threshold:
 
             st.error(
-                f"The Digital Twin estimates a risk of "
-                f"{percentage:.2f}%, which is above the "
-                f"configured 70% decision threshold."
+                f"The Digital Twin estimates an NDM risk "
+                f"of {percentage:.2f}%, which is above "
+                f"the configured 70% decision threshold."
             )
 
         else:
 
             st.success(
-                f"The Digital Twin estimates a risk of "
-                f"{percentage:.2f}%, which is below the "
-                f"configured 70% decision threshold."
+                f"The Digital Twin estimates an NDM risk "
+                f"of {percentage:.2f}%, which is below "
+                f"the configured 70% decision threshold."
             )
 
 
@@ -813,45 +1016,64 @@ if predict_button:
         # WHY DID THE MODEL GIVE THIS RESULT?
         # ====================================================
 
-        st.subheader("🔎 Why did the AI Twin give this result?")
+        st.subheader(
+            "🔎 Why did the AI Twin give this result?"
+        )
+
 
         st.write(
             "The following are model-based feature influence "
             "estimates. They show which input differences "
-            "contributed most to the prediction relative to "
-            "the stored reference values."
+            "contributed most to the prediction relative "
+            "to the stored reference values."
         )
 
+
+        # Calculate contributions
         contributions = calculate_patient_contributions(
             input_data,
             probability
         )
 
-        # Top 5 contributors
+
+        # ----------------------------------------------------
+        # TOP 5 FEATURES
+        # ----------------------------------------------------
+
         top_contributors = contributions[:5]
 
+
         explanation_rows = []
+
 
         for item in top_contributors:
 
             explanation_rows.append(
                 {
                     "Feature": item["feature"],
+
                     "Patient Value": round(
-                        item["patient_value"], 3
+                        item["patient_value"],
+                        3
                     ),
+
                     "Reference Value": round(
-                        item["reference_value"], 3
+                        item["reference_value"],
+                        3
                     ),
+
                     "Estimated Influence": round(
-                        item["contribution"], 4
+                        item["contribution"],
+                        4
                     )
                 }
             )
 
+
         explanation_df = pd.DataFrame(
             explanation_rows
         )
+
 
         st.dataframe(
             explanation_df,
@@ -861,32 +1083,41 @@ if predict_button:
 
 
         # ====================================================
-        # SIMPLE EXPLANATION
+        # SIMPLE MODEL EXPLANATION
         # ====================================================
 
-        st.markdown("### 🧠 Model Explanation")
+        st.markdown(
+            "### 🧠 Model Explanation"
+        )
+
 
         positive_features = [
-            item for item in contributions
+            item
+            for item in contributions
             if item["contribution"] > 0
         ]
 
+
         negative_features = [
-            item for item in contributions
+            item
+            for item in contributions
             if item["contribution"] < 0
         ]
 
 
+        # ----------------------------------------------------
+        # FEATURES INCREASING MODEL OUTPUT
+        # ----------------------------------------------------
+
         if positive_features:
 
-            top_positive = positive_features[:3]
-
             st.write(
-                "**Features estimated to increase the model's "
-                "risk output:**"
+                "**Features estimated to increase "
+                "the model's risk output:**"
             )
 
-            for item in top_positive:
+
+            for item in positive_features[:3]:
 
                 st.write(
                     f"- **{item['feature']}** "
@@ -895,16 +1126,19 @@ if predict_button:
                 )
 
 
+        # ----------------------------------------------------
+        # FEATURES DECREASING MODEL OUTPUT
+        # ----------------------------------------------------
+
         if negative_features:
 
-            top_negative = negative_features[:3]
-
             st.write(
-                "**Features estimated to decrease the model's "
-                "risk output:**"
+                "**Features estimated to decrease "
+                "the model's risk output:**"
             )
 
-            for item in top_negative:
+
+            for item in negative_features[:3]:
 
                 st.write(
                     f"- **{item['feature']}** "
@@ -914,22 +1148,54 @@ if predict_button:
 
 
         # ====================================================
-        # MODEL LIMITATION
+        # EXPLANATION NOTE
+        # ====================================================
+
+        st.info(
+            "These feature influences describe how the model "
+            "responded to the entered values compared with "
+            "reference values. They should not be interpreted "
+            "as proof that a feature causes neonatal diabetes."
+        )
+
+
+        # ====================================================
+        # IMPORTANT LIMITATION
         # ====================================================
 
         st.markdown("---")
 
         st.warning(
             "Important: This prediction is an AI-generated "
-            "risk estimate from the prototype model. "
+            "risk estimate from a research prototype. "
             "It is not a medical diagnosis and should not "
             "be used for clinical decision-making."
         )
 
+
         st.caption(
             "The current prototype uses a synthetic training "
-            "dataset. The displayed risk probability should "
-            "not be interpreted as clinically validated risk."
+            "dataset. Therefore, the displayed probability "
+            "should not be interpreted as clinically validated risk."
+        )
+
+
+    # ========================================================
+    # ERROR HANDLING
+    # ========================================================
+
+    except Exception as e:
+
+        st.error(
+            "An error occurred while generating the prediction."
+        )
+
+        st.write(
+            "Please check the model, scaler and feature files."
+        )
+
+        st.code(
+            str(e)
         )
 
 
@@ -942,4 +1208,4 @@ st.markdown("---")
 st.caption(
     "Neonatal Diabetes AI Digital Twin • "
     "Research / Educational Prototype"
-            )
+)
