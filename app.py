@@ -33,6 +33,8 @@ REFERENCE_FILE = "ndm_reference_values.pkl"
 # ============================================================
 
 EXPECTED_FEATURES = [
+
+    # Maternal
     "Maternal_Age_years",
     "Maternal_BMI",
     "Maternal_Systolic_BP",
@@ -41,16 +43,19 @@ EXPECTED_FEATURES = [
     "Maternal_HbA1c_percent",
     "Gestational_Age_weeks",
 
+    # Fetal
     "Fetal_Heart_Rate_bpm",
     "Fetal_Movement_per_hour",
     "Ultrasound_Growth_Percentile",
     "Estimated_Fetal_Weight_g",
 
+    # Maternal history
     "Family_History_Diabetes",
     "Consanguinity",
     "Previous_Gestational_Diabetes",
     "Maternal_Autoimmune_History",
 
+    # Genetic
     "KCNJ11_Variant",
     "ABCC8_Variant",
     "INS_Variant",
@@ -60,6 +65,7 @@ EXPECTED_FEATURES = [
     "GATA6_Variant",
     "GLIS3_Variant",
 
+    # Gene expression
     "INS_expr",
     "PDX1_expr",
     "NKX6_1_expr",
@@ -74,7 +80,114 @@ EXPECTED_FEATURES = [
 
 
 # ============================================================
-# CHECK MODEL FILES
+# HUMAN-READABLE FEATURE NAMES
+# ============================================================
+
+FEATURE_DISPLAY_NAMES = {
+
+    "Maternal_Age_years":
+        "Maternal age",
+
+    "Maternal_BMI":
+        "Maternal BMI",
+
+    "Maternal_Systolic_BP":
+        "Maternal systolic blood pressure",
+
+    "Maternal_Diastolic_BP":
+        "Maternal diastolic blood pressure",
+
+    "Maternal_Fasting_Glucose_mg_dL":
+        "Maternal fasting glucose",
+
+    "Maternal_HbA1c_percent":
+        "Maternal HbA1c",
+
+    "Gestational_Age_weeks":
+        "Gestational age",
+
+    "Fetal_Heart_Rate_bpm":
+        "Fetal heart rate",
+
+    "Fetal_Movement_per_hour":
+        "Fetal movement",
+
+    "Ultrasound_Growth_Percentile":
+        "Ultrasound growth percentile",
+
+    "Estimated_Fetal_Weight_g":
+        "Estimated fetal weight",
+
+    "Family_History_Diabetes":
+        "Family history of diabetes",
+
+    "Consanguinity":
+        "Consanguinity",
+
+    "Previous_Gestational_Diabetes":
+        "Previous gestational diabetes",
+
+    "Maternal_Autoimmune_History":
+        "Maternal autoimmune history",
+
+    "KCNJ11_Variant":
+        "KCNJ11 genetic information",
+
+    "ABCC8_Variant":
+        "ABCC8 genetic information",
+
+    "INS_Variant":
+        "INS genetic information",
+
+    "Chr6q24_Abnormality":
+        "Chr6q24 genetic information",
+
+    "GCK_Variant":
+        "GCK genetic information",
+
+    "HNF1B_Variant":
+        "HNF1B genetic information",
+
+    "GATA6_Variant":
+        "GATA6 genetic information",
+
+    "GLIS3_Variant":
+        "GLIS3 genetic information",
+
+    "INS_expr":
+        "INS gene expression",
+
+    "PDX1_expr":
+        "PDX1 gene expression",
+
+    "NKX6_1_expr":
+        "NKX6_1 gene expression",
+
+    "MAFA_expr":
+        "MAFA gene expression",
+
+    "GCK_expr":
+        "GCK gene expression",
+
+    "SLC2A2_expr":
+        "SLC2A2 gene expression",
+
+    "ABCC8_expr":
+        "ABCC8 gene expression",
+
+    "KCNJ11_expr":
+        "KCNJ11 gene expression",
+
+    "NEUROD1_expr":
+        "NEUROD1 gene expression",
+
+    "HNF1B_expr":
+        "HNF1B gene expression"
+}
+
+
+# ============================================================
+# CHECK REQUIRED FILES
 # ============================================================
 
 required_files = [
@@ -85,20 +198,31 @@ required_files = [
 ]
 
 missing_files = [
-    file for file in required_files
+    file
+    for file in required_files
     if not os.path.exists(file)
 ]
 
+
 if missing_files:
 
-    st.error("Required AI Twin files are missing.")
+    st.error(
+        "Required AI Twin files are missing."
+    )
+
+    st.write(
+        "The following files were not found:"
+    )
 
     for file in missing_files:
-        st.write(f"❌ {file}")
+
+        st.write(
+            f"❌ {file}"
+        )
 
     st.info(
-        "Make sure these files are uploaded to the same "
-        "GitHub repository as app.py."
+        "Make sure these files are uploaded to the "
+        "same GitHub repository as app.py."
     )
 
     st.stop()
@@ -137,13 +261,19 @@ def load_ai_twin():
 
 try:
 
-    model, scaler, feature_names, reference_values = load_ai_twin()
+    model, scaler, feature_names, reference_values = (
+        load_ai_twin()
+    )
 
 except Exception as e:
 
-    st.error("The AI Twin model could not be loaded.")
+    st.error(
+        "The AI Twin model could not be loaded."
+    )
 
-    st.code(str(e))
+    st.code(
+        str(e)
+    )
 
     st.stop()
 
@@ -162,7 +292,7 @@ if len(EXPECTED_FEATURES) != 33:
 
 
 # ============================================================
-# HELPER FUNCTION
+# REFERENCE VALUE FUNCTION
 # ============================================================
 
 def get_reference_value(feature):
@@ -202,10 +332,14 @@ def yes_no_input(label):
 
     value = st.selectbox(
         label,
-        ["No", "Yes"]
+        [
+            "No",
+            "Yes"
+        ]
     )
 
     if value == "Yes":
+
         return 1
 
     return 0
@@ -226,6 +360,7 @@ def variant_input(label):
     )
 
     if value == "Variant detected":
+
         return 1
 
     return 0
@@ -255,7 +390,9 @@ def calculate_patient_contributions(
             dtype=float
         ).copy()
 
-        modified_data[index] = reference_value
+        modified_data[index] = (
+            reference_value
+        )
 
         try:
 
@@ -304,7 +441,9 @@ def calculate_patient_contributions(
 # TITLE
 # ============================================================
 
-st.title("🧬 Digital Twin Prediction")
+st.title(
+    "🧬 Neonatal Diabetes AI Digital Twin"
+)
 
 st.write(
     "AI-based neonatal diabetes mellitus risk estimation "
@@ -326,7 +465,9 @@ st.info(
 # SIDEBAR
 # ============================================================
 
-st.sidebar.title("🧬 AI Twin")
+st.sidebar.title(
+    "🧬 AI Twin"
+)
 
 st.sidebar.write(
     "Enter the available patient information "
@@ -352,7 +493,9 @@ st.sidebar.write(
 # MATERNAL INFORMATION
 # ============================================================
 
-st.header("👩 Maternal Information")
+st.header(
+    "👩 Maternal Information"
+)
 
 col1, col2, col3 = st.columns(3)
 
@@ -435,7 +578,9 @@ with col3:
 # FETAL INFORMATION
 # ============================================================
 
-st.header("👶 Fetal Information")
+st.header(
+    "👶 Fetal Information"
+)
 
 col1, col2, col3 = st.columns(3)
 
@@ -481,7 +626,9 @@ with col3:
 # GENETIC INFORMATION
 # ============================================================
 
-st.header("🧬 Genetic Information")
+st.header(
+    "🧬 Genetic Information"
+)
 
 col1, col2, col3 = st.columns(3)
 
@@ -531,7 +678,9 @@ with col3:
 # GENE EXPRESSION INFORMATION
 # ============================================================
 
-st.header("🔬 Gene Expression Information")
+st.header(
+    "🔬 Gene Expression Information"
+)
 
 st.write(
     "Enter molecular gene-expression values when available."
@@ -600,7 +749,7 @@ with col3:
 
 
 # ============================================================
-# CREATE THE 33-FEATURE INPUT
+# CREATE 33-FEATURE INPUT
 # ============================================================
 
 input_data = [
@@ -686,7 +835,7 @@ if predict_button:
     try:
 
         # ----------------------------------------------------
-        # Convert input to NumPy array
+        # CONVERT INPUT TO NUMPY ARRAY
         # ----------------------------------------------------
 
         input_array = np.array(
@@ -696,7 +845,7 @@ if predict_button:
 
 
         # ----------------------------------------------------
-        # Scale input
+        # SCALE INPUT
         # ----------------------------------------------------
 
         scaled_input = scaler.transform(
@@ -705,7 +854,7 @@ if predict_button:
 
 
         # ----------------------------------------------------
-        # Neural network prediction
+        # NEURAL NETWORK PREDICTION
         # ----------------------------------------------------
 
         prediction = model.predict(
@@ -720,6 +869,7 @@ if predict_button:
 
 
         # Keep probability between 0 and 1
+
         probability = max(
             0.0,
             min(
@@ -729,7 +879,9 @@ if predict_button:
         )
 
 
-        percentage = probability * 100
+        percentage = (
+            probability * 100
+        )
 
 
         # ----------------------------------------------------
@@ -754,7 +906,9 @@ if predict_button:
 
         st.markdown("---")
 
-        st.header("🧬 Digital Twin Prediction")
+        st.header(
+            "🧬 Digital Twin Prediction"
+        )
 
 
         result_col1, result_col2 = st.columns(2)
@@ -780,15 +934,21 @@ if predict_button:
         # DIGITAL TWIN PROFILE
         # ====================================================
 
-        st.subheader("👤 Digital Twin Profile")
+        st.subheader(
+            "👤 Digital Twin Profile"
+        )
 
 
-        profile1, profile2, profile3, profile4 = st.columns(4)
+        profile1, profile2, profile3, profile4 = (
+            st.columns(4)
+        )
 
 
         with profile1:
 
-            st.markdown("### 👩 Maternal")
+            st.markdown(
+                "### 👩 Maternal"
+            )
 
             st.write(
                 f"Age: {maternal_age:.1f} years"
@@ -810,7 +970,9 @@ if predict_button:
 
         with profile2:
 
-            st.markdown("### 👶 Fetal")
+            st.markdown(
+                "### 👶 Fetal"
+            )
 
             st.write(
                 f"Heart rate: "
@@ -835,7 +997,9 @@ if predict_button:
 
         with profile3:
 
-            st.markdown("### 🧬 Genetic")
+            st.markdown(
+                "### 🧬 Genetic"
+            )
 
             genetic_count = sum(
                 [
@@ -862,7 +1026,9 @@ if predict_button:
 
         with profile4:
 
-            st.markdown("### 🔬 Molecular")
+            st.markdown(
+                "### 🔬 Molecular"
+            )
 
             st.write(
                 "Gene-expression layer"
@@ -881,8 +1047,9 @@ if predict_button:
         # OVERALL PREDICTION GRAPH
         # ====================================================
 
-        st.subheader("📊 Overall Prediction")
-
+        st.subheader(
+            "📊 Overall Prediction"
+        )
 
         st.write(
             "The graph shows the estimated NDM risk "
@@ -890,13 +1057,11 @@ if predict_button:
         )
 
 
-        # Create graph
         fig, ax = plt.subplots(
             figsize=(10, 3)
         )
 
 
-        # Risk bar
         ax.barh(
             ["NDM Risk"],
             [percentage],
@@ -904,7 +1069,6 @@ if predict_button:
         )
 
 
-        # 70% threshold
         ax.axvline(
             x=70,
             linestyle="--",
@@ -913,7 +1077,6 @@ if predict_button:
         )
 
 
-        # Prediction value
         ax.text(
             percentage,
             0,
@@ -925,7 +1088,6 @@ if predict_button:
         )
 
 
-        # Threshold label
         ax.text(
             70,
             0.35,
@@ -935,7 +1097,6 @@ if predict_button:
         )
 
 
-        # Axis
         ax.set_xlim(
             0,
             100
@@ -965,12 +1126,8 @@ if predict_button:
 
         plt.tight_layout()
 
-
-        # Display graph
         st.pyplot(fig)
 
-
-        # Close figure
         plt.close(fig)
 
 
@@ -979,7 +1136,9 @@ if predict_button:
         # ====================================================
 
         st.markdown(
-            "**Risk scale:** 0% ───────── 50% ───────── 70% ───────── 100%"
+            "**Risk scale:** "
+            "0% ───────── 50% ───────── "
+            "70% ───────── 100%"
         )
 
         st.caption(
@@ -992,23 +1151,35 @@ if predict_button:
         # RISK INTERPRETATION
         # ====================================================
 
-        st.subheader("📌 Risk Interpretation")
+        st.subheader(
+            "📌 Risk Interpretation"
+        )
 
 
         if probability >= threshold:
 
             st.error(
-                f"The Digital Twin estimates an NDM risk "
-                f"of {percentage:.2f}%, which is above "
-                f"the configured 70% decision threshold."
+                f"""
+                The Digital Twin estimates an NDM risk
+                of {percentage:.2f}%, which is above the
+                configured 70% decision threshold.
+
+                This is an estimated model output and
+                should not be interpreted as a diagnosis.
+                """
             )
 
         else:
 
             st.success(
-                f"The Digital Twin estimates an NDM risk "
-                f"of {percentage:.2f}%, which is below "
-                f"the configured 70% decision threshold."
+                f"""
+                The Digital Twin estimates an NDM risk
+                of {percentage:.2f}%, which is below the
+                configured 70% decision threshold.
+
+                A lower model prediction does not guarantee
+                that neonatal diabetes is absent.
+                """
             )
 
 
@@ -1022,141 +1193,379 @@ if predict_button:
 
 
         st.write(
-            "The following are model-based feature influence "
-            "estimates. They show which input differences "
-            "contributed most to the prediction relative "
-            "to the stored reference values."
+            "The AI Twin analyzes the combination of "
+            "maternal, fetal, genetic and molecular "
+            "information entered for this patient."
+        )
+
+        st.write(
+            "The factors below had the strongest estimated "
+            "influence on the model's current prediction."
         )
 
 
-        # Calculate contributions
-        contributions = calculate_patient_contributions(
-            input_data,
-            probability
+        # ====================================================
+        # CALCULATE CONTRIBUTIONS
+        # ====================================================
+
+        contributions = (
+            calculate_patient_contributions(
+                input_data,
+                probability
+            )
         )
 
 
-        # ----------------------------------------------------
-        # TOP 5 FEATURES
-        # ----------------------------------------------------
+        # ====================================================
+        # TOP CONTRIBUTING FACTORS
+        # ====================================================
+
+        st.markdown(
+            "### 🧠 Main Factors Influencing the Prediction"
+        )
+
 
         top_contributors = contributions[:5]
 
 
-        explanation_rows = []
+        for rank, item in enumerate(
+            top_contributors,
+            start=1
+        ):
 
+            feature = item["feature"]
 
-        for item in top_contributors:
+            influence = item["contribution"]
 
-            explanation_rows.append(
-                {
-                    "Feature": item["feature"],
-
-                    "Patient Value": round(
-                        item["patient_value"],
-                        3
-                    ),
-
-                    "Reference Value": round(
-                        item["reference_value"],
-                        3
-                    ),
-
-                    "Estimated Influence": round(
-                        item["contribution"],
-                        4
-                    )
-                }
+            display_name = (
+                FEATURE_DISPLAY_NAMES.get(
+                    feature,
+                    feature
+                )
             )
 
 
-        explanation_df = pd.DataFrame(
-            explanation_rows
-        )
+            if influence > 0:
+
+                st.markdown(
+                    f"""
+                    **{rank}. 🔺 {display_name}**
+
+                    This feature was estimated to
+                    **increase the model's predicted risk**.
+
+                    Model influence: **{influence:+.4f}**
+                    """
+                )
 
 
-        st.dataframe(
-            explanation_df,
-            use_container_width=True,
-            hide_index=True
-        )
+            elif influence < 0:
+
+                st.markdown(
+                    f"""
+                    **{rank}. 🔻 {display_name}**
+
+                    This feature was estimated to
+                    **decrease the model's predicted risk**.
+
+                    Model influence: **{influence:+.4f}**
+                    """
+                )
+
+
+            else:
+
+                st.markdown(
+                    f"""
+                    **{rank}. ➖ {display_name}**
+
+                    This feature had little estimated
+                    influence on the current prediction.
+                    """
+                )
 
 
         # ====================================================
-        # SIMPLE MODEL EXPLANATION
+        # OVERALL MODEL EXPLANATION
         # ====================================================
 
         st.markdown(
-            "### 🧠 Model Explanation"
+            "### 📋 Overall Explanation"
         )
 
 
-        positive_features = [
-            item
-            for item in contributions
-            if item["contribution"] > 0
-        ]
+        if probability >= threshold:
 
+            st.warning(
+                f"""
+                The AI Twin estimated a relatively high
+                model risk of **{percentage:.2f}%**.
 
-        negative_features = [
-            item
-            for item in contributions
-            if item["contribution"] < 0
-        ]
+                The prediction crossed the configured
+                **70% decision threshold** because of the
+                combined effect of the entered features.
 
+                The prediction is based on the combination
+                of features rather than on one feature alone.
+                """
+            )
 
-        # ----------------------------------------------------
-        # FEATURES INCREASING MODEL OUTPUT
-        # ----------------------------------------------------
+        else:
 
-        if positive_features:
+            st.success(
+                f"""
+                The AI Twin estimated a lower model risk
+                of **{percentage:.2f}%**.
 
-            st.write(
-                "**Features estimated to increase "
-                "the model's risk output:**"
+                The prediction remained below the configured
+                **70% decision threshold** because of the
+                combined effect of the entered features.
+
+                A lower prediction does not prove that
+                neonatal diabetes is absent.
+                """
             )
 
 
-            for item in positive_features[:3]:
+        # ====================================================
+        # WHAT SHOULD HAPPEN NEXT?
+        # ====================================================
 
-                st.write(
-                    f"- **{item['feature']}** "
-                    f"(estimated influence: "
-                    f"{item['contribution']:+.4f})"
-                )
+        st.subheader(
+            "🩺 What Should Happen Next?"
+        )
 
 
-        # ----------------------------------------------------
-        # FEATURES DECREASING MODEL OUTPUT
-        # ----------------------------------------------------
+        if probability >= threshold:
 
-        if negative_features:
+            st.markdown(
+                """
+                ### ⚠️ Elevated Model Risk
 
-            st.write(
-                "**Features estimated to decrease "
-                "the model's risk output:**"
+                This result should **not be interpreted as
+                a diagnosis**.
+
+                Based on the information available to the
+                AI Twin, the following areas may be appropriate
+                for review by a qualified healthcare professional.
+
+                **1. 👩 Review maternal information**
+
+                Review the available maternal glucose,
+                HbA1c, blood pressure and pregnancy information.
+
+                **2. 👶 Review fetal information**
+
+                Review fetal growth, estimated fetal weight,
+                ultrasound findings and other relevant
+                prenatal measurements.
+
+                **3. 🧬 Review family and genetic information**
+
+                Review available family history and genetic
+                information.
+
+                **4. 🔬 Consider genetic evaluation**
+
+                If neonatal diabetes is clinically suspected,
+                a healthcare professional may consider whether
+                genetic evaluation or testing is appropriate.
+
+                **5. 📋 Continue appropriate prenatal monitoring**
+
+                Further monitoring and evaluation should be
+                determined by the treating healthcare
+                professional.
+                """
+            )
+
+        else:
+
+            st.markdown(
+                """
+                ### ✅ Lower Model Risk
+
+                The current AI Twin prediction is below the
+                configured 70% decision threshold.
+
+                **Recommended next steps:**
+
+                **1. 👩 Continue appropriate prenatal care**
+
+                Continue routine care and monitoring according
+                to the treating healthcare professional.
+
+                **2. 👶 Continue monitoring relevant fetal data**
+
+                New fetal measurements can be incorporated
+                when available.
+
+                **3. 🧬 Update genetic information when available**
+
+                New genetic information can change the
+                Digital Twin's prediction.
+
+                **4. 🔄 Update the Digital Twin**
+
+                If new maternal, fetal, genetic or molecular
+                information becomes available, the prediction
+                can be recalculated.
+
+                **5. 👨‍⚕️ Discuss clinical concerns**
+
+                Any medical concern should be evaluated by
+                a qualified healthcare professional.
+                """
             )
 
 
-            for item in negative_features[:3]:
-
-                st.write(
-                    f"- **{item['feature']}** "
-                    f"(estimated influence: "
-                    f"{item['contribution']:+.4f})"
-                )
-
-
         # ====================================================
-        # EXPLANATION NOTE
+        # DIGITAL TWIN UPDATE
         # ====================================================
+
+        st.subheader(
+            "🔄 How the Digital Twin Can Be Updated"
+        )
+
 
         st.info(
-            "These feature influences describe how the model "
-            "responded to the entered values compared with "
-            "reference values. They should not be interpreted "
-            "as proof that a feature causes neonatal diabetes."
+            """
+            The Digital Twin is designed as a patient-specific
+            computational representation that can be updated
+            when new information becomes available.
+
+            **New maternal data**
+            ↓
+
+            **New fetal measurements**
+            ↓
+
+            **New genetic information**
+            ↓
+
+            **New molecular information**
+            ↓
+
+            **Updated AI prediction**
+            ↓
+
+            **Updated explanation**
+            """
         )
+
+
+        # ====================================================
+        # WHAT CAN CHANGE THE PREDICTION?
+        # ====================================================
+
+        st.subheader(
+            "📈 What Can Change the Prediction?"
+        )
+
+
+        st.write(
+            "The prediction is generated from the combination "
+            "of 33 input features. Therefore, adding or updating "
+            "patient information can change the model output."
+        )
+
+
+        change_col1, change_col2, change_col3 = (
+            st.columns(3)
+        )
+
+
+        with change_col1:
+
+            st.markdown(
+                "### 👩 Maternal"
+            )
+
+            st.write(
+                "Glucose, HbA1c, BMI, blood pressure "
+                "and gestational information."
+            )
+
+
+        with change_col2:
+
+            st.markdown(
+                "### 👶 Fetal"
+            )
+
+            st.write(
+                "Fetal heart rate, movement, growth "
+                "percentile and estimated weight."
+            )
+
+
+        with change_col3:
+
+            st.markdown(
+                "### 🧬 Genetic / Molecular"
+            )
+
+            st.write(
+                "Genetic indicators and available "
+                "gene-expression measurements."
+            )
+
+
+        # ====================================================
+        # IMPORTANT EXPLANATION LIMITATION
+        # ====================================================
+
+        st.markdown("---")
+
+        st.subheader(
+            "⚠️ Important About the Explanation"
+        )
+
+
+        st.caption(
+            "The feature influences shown above describe "
+            "how the trained model responded to the entered "
+            "values relative to its stored training-data "
+            "baseline. They are model-based explanations and "
+            "do not establish that a feature causes neonatal "
+            "diabetes."
+        )
+
+
+        # ====================================================
+        # TECHNICAL DETAILS - OPTIONAL
+        # ====================================================
+
+        with st.expander(
+            "🔧 Technical Model Details"
+        ):
+
+            st.write(
+                "Model type: Neural Network"
+            )
+
+            st.write(
+                "Number of input features: 33"
+            )
+
+            st.write(
+                "Decision threshold: 70%"
+            )
+
+            st.write(
+                "Explanation method: "
+                "reference-based feature perturbation"
+            )
+
+            st.write(
+                "Reference values are used internally "
+                "to estimate feature influence."
+            )
+
+            st.write(
+                "The reference values are training-data "
+                "baselines, not clinical normal ranges."
+            )
 
 
         # ====================================================
@@ -1166,17 +1575,21 @@ if predict_button:
         st.markdown("---")
 
         st.warning(
-            "Important: This prediction is an AI-generated "
-            "risk estimate from a research prototype. "
-            "It is not a medical diagnosis and should not "
-            "be used for clinical decision-making."
+            """
+            Important: This prediction is an AI-generated
+            risk estimate from a research prototype.
+
+            It is not a medical diagnosis and should not
+            be used alone for clinical decision-making.
+            """
         )
 
 
         st.caption(
             "The current prototype uses a synthetic training "
             "dataset. Therefore, the displayed probability "
-            "should not be interpreted as clinically validated risk."
+            "should not be interpreted as clinically validated "
+            "risk."
         )
 
 
@@ -1208,4 +1621,4 @@ st.markdown("---")
 st.caption(
     "Neonatal Diabetes AI Digital Twin • "
     "Research / Educational Prototype"
-)
+            )
